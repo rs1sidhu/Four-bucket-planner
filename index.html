@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Four Bucket Planner</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<meta name="theme-color" content="#26384e">
 <style>
 :root{
   --bg:#f7f7f5;
@@ -172,7 +175,14 @@ textarea{min-height:90px;resize:vertical}
   padding:9px 0;
   font-size:14px;
 }
-#voiceStatus{display:none}
+#voiceStatus{
+  display:none;
+  margin:8px 0 14px;
+  padding:0 4px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.35;
+}
 .status-pill{
   display:inline-block;
   border-radius:999px;
@@ -197,7 +207,7 @@ textarea{min-height:90px;resize:vertical}
 <header>
   <div>
     <h1>Four Bucket Planner</h1>
-    <p>Do Now · Delegated · Scheduled · Later <span class="status-pill">Live Bucket Preview</span></p>
+    <p>Do Now · Delegated · Scheduled · Later <span class="status-pill">Daily Planner</span></p>
   </div>
   <div class="top-actions">
     <button class="secondary" id="voiceAdd" type="button">🎤 Voice Add</button>
@@ -205,7 +215,7 @@ textarea{min-height:90px;resize:vertical}
   </div>
 </header>
 
-<div id="voiceStatus" class="notice"></div>
+<div id="voiceStatus" aria-live="polite"></div>
 
 <!-- STATIC BUCKETS: these remain visible even if scripts are limited -->
 <section class="bucket-grid" aria-label="Task buckets">
@@ -515,12 +525,14 @@ textarea{min-height:90px;resize:vertical}
       }
 
       if(previewEl){
-        previewEl.textContent=count ? '• '+bucketTasks[0].name : 'No tasks';
+        previewEl.textContent=count ? '• '+bucketTasks[0].name : '';
         previewEl.title=count ? bucketTasks[0].name : '';
+        previewEl.style.display=count ? 'block' : 'none';
       }
 
       if(moreEl){
         moreEl.textContent=count>1 ? '+'+(count-1)+' more' : '';
+        moreEl.style.display=count>1 ? 'block' : 'none';
       }
     });
   }
@@ -743,6 +755,18 @@ textarea{min-height:90px;resize:vertical}
 
   const voiceButton=document.getElementById('voiceAdd');
   const voiceStatus=document.getElementById('voiceStatus');
+  let voiceStatusTimer=null;
+  function showVoiceStatus(message, autoHide=false){
+    if(voiceStatusTimer) clearTimeout(voiceStatusTimer);
+    voiceStatus.textContent=message;
+    voiceStatus.style.display='block';
+    if(autoHide){
+      voiceStatusTimer=setTimeout(()=>{
+        voiceStatus.style.display='none';
+        voiceStatus.textContent='';
+      },4000);
+    }
+  }
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 
   if(SpeechRecognition){
@@ -755,8 +779,7 @@ textarea{min-height:90px;resize:vertical}
     voiceButton.addEventListener('click',()=>{
       clearForm();
       finalText='';
-      voiceStatus.style.display='block';
-      voiceStatus.textContent='Listening… speak your task.';
+      showVoiceStatus('Listening… speak your task.');
       voiceButton.disabled=true;
       try{recognition.start()}catch(e){voiceButton.disabled=false}
     });
@@ -769,28 +792,28 @@ textarea{min-height:90px;resize:vertical}
         else interim+=piece;
       }
       taskName.value=(finalText+' '+interim).trim();
-      voiceStatus.textContent='Listening… '+taskName.value;
+      showVoiceStatus('Listening… '+taskName.value);
     });
 
     recognition.addEventListener('end',()=>{
       voiceButton.disabled=false;
-      voiceStatus.style.display='block';
-      voiceStatus.textContent=taskName.value.trim()
-        ? 'Voice captured. Review it and save the task.'
-        : 'No speech captured. You can also use the microphone on the iPhone keyboard.';
+      showVoiceStatus(
+        taskName.value.trim()
+          ? 'Voice captured. Review it and save the task.'
+          : 'No speech captured. You can also use the iPhone keyboard microphone.',
+        true
+      );
     });
 
     recognition.addEventListener('error',()=>{
       voiceButton.disabled=false;
-      voiceStatus.style.display='block';
-      voiceStatus.textContent='Direct voice input was not available here. Use the microphone on the iPhone keyboard.';
+      showVoiceStatus('Direct voice input was not available here. Use the microphone on the iPhone keyboard.', true);
     });
   }else{
     voiceButton.addEventListener('click',()=>{
       clearForm();
       taskName.focus();
-      voiceStatus.style.display='block';
-      voiceStatus.textContent='Use the microphone on the iPhone keyboard to dictate into the Task field.';
+      showVoiceStatus('Use the microphone on the iPhone keyboard to dictate into the Task field.', true);
     });
   }
 
