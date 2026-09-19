@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Four Bucket Planner</title>
+<style>
+:root{
+  --bg:#f7f7f5;
+  --card:#ffffff;
+  --text:#20252b;
+  --muted:#707784;
+  --border:#dededb;
+  --accent:#26384e;
+  --soft:#eef1f4;
+  --do:#ad5b59;
+  --delegated:#ad7e37;
+  --scheduled:#5d8198;
+  --later:#817c87;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+main{max-width:980px;margin:0 auto;padding:20px}
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+  flex-wrap:wrap;
+}
+h1{font-size:30px;margin:0 0 6px}
+h2{margin:0}
+p{margin:0;color:var(--muted)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.top-actions{display:flex;gap:10px;flex-wrap:wrap}
+.primary{
+  border:0;background:var(--accent);color:#fff;
+  border-radius:14px;padding:13px 18px;font-weight:700;
+}
+.secondary{
+  border:1px solid var(--border);background:#fff;color:#1680df;
+  border-radius:14px;padding:12px 16px;
+}
+
+/* Front-page four buckets: static HTML so they always display */
+.bucket-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:26px 34px;
+  margin:28px 0 24px;
+}
+.bucket-button{
+  border:0;
+  background:transparent;
+  padding:0;
+  color:#fff;
+  min-height:170px;
+}
+.bucket-shape{
+  width:100%;
+  min-height:170px;
+  clip-path:polygon(4% 0,96% 0,84% 100%,16% 100%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:22px;
+}
+.bucket-button[data-bucket="do"] .bucket-shape{background:var(--do)}
+.bucket-button[data-bucket="delegated"] .bucket-shape{background:var(--delegated)}
+.bucket-button[data-bucket="scheduled"] .bucket-shape{background:var(--scheduled)}
+.bucket-button[data-bucket="later"] .bucket-shape{background:var(--later)}
+.bucket-button strong{font-size:24px;line-height:1.1}
+.bucket-count{font-size:18px;margin-top:10px}
+.bucket-preview{
+  margin-top:10px;
+  max-width:88%;
+  font-size:13px;
+  line-height:1.25;
+  opacity:.95;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.bucket-more{
+  margin-top:4px;
+  font-size:12px;
+  opacity:.85;
+}
+.bucket-button.active .bucket-shape{
+  outline:4px solid var(--accent);
+  outline-offset:4px;
+}
+
+.utility-tabs{
+  display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;
+}
+.utility-tabs button{
+  border:1px solid var(--border);background:#fff;color:#1680df;
+  border-radius:999px;padding:11px 18px;font-size:17px;
+}
+.utility-tabs button.active{background:var(--soft);font-weight:700}
+
+.notice{
+  background:#fff;border:1px solid var(--border);
+  border-radius:14px;padding:12px;margin-bottom:16px;
+}
+.hidden{display:none!important}
+.task-list,.panel{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:18px;
+}
+.task-list{margin-bottom:18px}
+.task{
+  border:1px solid var(--border);
+  border-radius:13px;
+  padding:12px;
+  margin-top:10px;
+}
+.task-name{font-weight:700}
+.meta{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.45}
+.badge{
+  display:inline-block;background:var(--soft);
+  border-radius:999px;padding:4px 8px;font-size:12px;margin-top:7px;
+}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.actions button{
+  border:1px solid var(--border);background:#fff;
+  border-radius:9px;padding:8px 10px;
+}
+label{display:block;font-size:14px;font-weight:700;margin:12px 0 6px}
+input,select,textarea{
+  width:100%;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:#fff;
+  min-height:46px;
+  font-size:16px;
+  color:var(--text);
+}
+textarea{min-height:90px;resize:vertical}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.footer-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-top:18px;
+}
+.small{font-size:13px;color:var(--muted)}
+.empty{
+  border:1px dashed var(--border);
+  border-radius:12px;
+  padding:12px;
+  color:var(--muted);
+  margin-top:10px;
+}
+.archive-item{
+  border-top:1px solid var(--border);
+  padding:9px 0;
+  font-size:14px;
+}
+#voiceStatus{display:none}
+.status-pill{
+  display:inline-block;
+  border-radius:999px;
+  padding:3px 8px;
+  background:var(--soft);
+  font-size:12px;
+  margin-left:6px;
+}
+@media(max-width:640px){
+  main{padding:18px}
+  h1{font-size:27px}
+  .bucket-grid{gap:20px 24px}
+  .bucket-button,.bucket-shape{min-height:150px}
+  .bucket-button strong{font-size:21px}
+  .bucket-count{font-size:16px}
+  .form-row,.footer-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1>Four Bucket Planner</h1>
+    <p>Do Now · Delegated · Scheduled · Later <span class="status-pill">Live Bucket Preview</span></p>
+  </div>
+  <div class="top-actions">
+    <button class="secondary" id="voiceAdd" type="button">🎤 Voice Add</button>
+    <button class="primary" id="quickAdd" type="button">+ Quick Add</button>
+  </div>
+</header>
+
+<div id="voiceStatus" class="notice"></div>
+
+<!-- STATIC BUCKETS: these remain visible even if scripts are limited -->
+<section class="bucket-grid" aria-label="Task buckets">
+  <button class="bucket-button active" type="button" data-bucket="do">
+    <span class="bucket-shape">
+      <strong>Do Now</strong>
+      <span class="bucket-count" id="count-do">0 tasks</span><span class="bucket-preview" id="preview-do">No tasks</span><span class="bucket-more" id="more-do"></span>
+    </span>
+  </button>
+
+  <button class="bucket-button" type="button" data-bucket="delegated">
+    <span class="bucket-shape">
+      <strong>Delegated</strong>
+      <span class="bucket-count" id="count-delegated">0 tasks</span><span class="bucket-preview" id="preview-delegated">No tasks</span><span class="bucket-more" id="more-delegated"></span>
+    </span>
+  </button>
+
+  <button class="bucket-button" type="button" data-bucket="scheduled">
+    <span class="bucket-shape">
+      <strong>Scheduled</strong>
+      <span class="bucket-count" id="count-scheduled">0 tasks</span><span class="bucket-preview" id="preview-scheduled">No tasks</span><span class="bucket-more" id="more-scheduled"></span>
+    </span>
+  </button>
+
+  <button class="bucket-button" type="button" data-bucket="later">
+    <span class="bucket-shape">
+      <strong>Later</strong>
+      <span class="bucket-count" id="count-later">0 tasks</span><span class="bucket-preview" id="preview-later">No tasks</span><span class="bucket-more" id="more-later"></span>
+    </span>
+  </button>
+</section>
+
+<div class="utility-tabs">
+  <button type="button" data-view="today">Today</button>
+  <button type="button" data-view="week">This Week</button>
+  <button type="button" data-view="followups">Follow-ups</button>
+  <button type="button" data-view="all">Show All</button>
+</div>
+
+<div id="automationNotice" class="notice hidden"></div>
+
+<section id="taskList" class="task-list">
+  <h2 id="taskListTitle">Do Now <span class="small">(0)</span></h2>
+  <div id="taskItems"><div class="empty">No tasks in this bucket.</div></div>
+</section>
+
+<section class="panel">
+  <h2 style="font-size:22px">Add or edit task</h2>
+  <p style="margin-top:6px">For Later items, add a due date or review date so nothing becomes forgotten.</p>
+
+  <form id="taskForm">
+    <input type="hidden" id="taskId">
+
+    <label for="taskName">Task</label>
+    <input id="taskName" required placeholder="e.g. Follow up with consultant">
+
+    <div class="form-row">
+      <div>
+        <label for="bucket">Bucket</label>
+        <select id="bucket">
+          <option value="do">Do Now</option>
+          <option value="delegated">Delegated</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="later">Later</option>
+        </select>
+      </div>
+      <div>
+        <label for="status">Status</label>
+        <select id="status">
+          <option>Open</option>
+          <option>Waiting</option>
+          <option>Done</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="project">Project / area</label>
+    <input id="project" placeholder="Business, Personal, Development...">
+
+    <label for="owner">Who / owner</label>
+    <input id="owner" placeholder="You, contractor, consultant...">
+
+    <div class="form-row">
+      <div>
+        <label for="dueDate">Due date</label>
+        <input id="dueDate" type="date">
+      </div>
+      <div>
+        <label for="followDate">Follow-up / review</label>
+        <input id="followDate" type="date">
+      </div>
+    </div>
+
+    <label for="wakeDays">Wake-up lead time</label>
+    <select id="wakeDays">
+      <option value="1">1 day before</option>
+      <option value="3">3 days before</option>
+      <option value="7" selected>1 week before</option>
+      <option value="14">2 weeks before</option>
+      <option value="30">30 days before</option>
+    </select>
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" placeholder="Optional details"></textarea>
+
+    <div class="form-actions">
+      <button class="primary" type="submit">Save task</button>
+      <button class="secondary" type="button" id="clearForm">Clear</button>
+    </div>
+    <div id="formMsg" class="small" style="margin-top:8px"></div>
+  </form>
+</section>
+
+<div class="footer-grid">
+  <section class="panel">
+    <h2 style="font-size:18px">Reminder Preview</h2>
+    <p class="small" style="margin-top:4px">These appear when you open the planner. Real phone push alerts can be added later.</p>
+    <div id="reminders" style="margin-top:8px">
+      <div class="empty">No reminders due right now.</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 style="font-size:18px">Completed Archive</h2>
+    <p class="small" style="margin-top:4px">Completed tasks are kept instead of deleted.</p>
+    <div id="archive" style="margin-top:8px">
+      <div class="empty">Nothing completed yet.</div>
+    </div>
+  </section>
+</div>
+</main>
+
+<script>
+(function(){
+  const STORAGE_KEY='fourBucketPlanner.master.v1';
+  const LEGACY_KEYS=[
+    'fourBucketPlanner.v9',
+    'fourBucketPlanner.v7',
+    'fourBucketPlanner.v1'
+  ];
+  const labels={do:'Do Now',delegated:'Delegated',scheduled:'Scheduled',later:'Later'};
+  const order=['do','delegated','scheduled','later'];
+
+  let selectedBucket='do';
+  let currentView='bucket';
+  let tasks=loadTasks();
+
+  const taskForm=document.getElementById('taskForm');
+  const taskId=document.getElementById('taskId');
+  const taskName=document.getElementById('taskName');
+  const bucket=document.getElementById('bucket');
+  const status=document.getElementById('status');
+  const project=document.getElementById('project');
+  const owner=document.getElementById('owner');
+  const dueDate=document.getElementById('dueDate');
+  const followDate=document.getElementById('followDate');
+  const wakeDays=document.getElementById('wakeDays');
+  const notes=document.getElementById('notes');
+  const formMsg=document.getElementById('formMsg');
+  const automationNotice=document.getElementById('automationNotice');
+  const taskListTitle=document.getElementById('taskListTitle');
+  const taskItems=document.getElementById('taskItems');
+
+  function loadTasks(){
+    try{
+      const direct=localStorage.getItem(STORAGE_KEY);
+      if(direct) return JSON.parse(direct);
+
+      for(const key of LEGACY_KEYS){
+        const legacy=localStorage.getItem(key);
+        if(legacy){
+          const parsed=JSON.parse(legacy);
+          localStorage.setItem(STORAGE_KEY,JSON.stringify(parsed));
+          return parsed;
+        }
+      }
+    }catch(e){}
+    return [];
+  }
+
+  function saveTasks(){
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(tasks))}catch(e){}
+  }
+
+  function esc(value){
+    return String(value??'').replace(/[&<>"']/g,ch=>({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[ch]));
+  }
+
+  function todayUTC(){
+    const d=new Date();
+    return new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  }
+
+  function parseDate(s){
+    if(!s) return null;
+    const parts=s.split('-').map(Number);
+    if(parts.length!==3) return null;
+    return new Date(Date.UTC(parts[0],parts[1]-1,parts[2]));
+  }
+
+  function daysFromToday(s){
+    const d=parseDate(s);
+    if(!d) return null;
+    return Math.round((d-todayUTC())/86400000);
+  }
+
+  function formatDate(s){
+    const d=parseDate(s);
+    if(!d) return '';
+    return new Intl.DateTimeFormat(undefined,{
+      month:'short',day:'numeric',year:'numeric',timeZone:'UTC'
+    }).format(d);
+  }
+
+  function targetDate(t){
+    return t.due||t.follow||'';
+  }
+
+  function applyAutomaticRules(){
+    const changes=[];
+
+    tasks.forEach(t=>{
+      if(t.status==='Done') return;
+
+      const target=targetDate(t);
+      const days=daysFromToday(target);
+      t.needsDate=(t.bucket==='later'&&!target);
+
+      if(t.bucket==='later'&&target){
+        if(days!==null&&days<=0){
+          t.bucket='do';
+          changes.push(`${t.name} moved to Do Now`);
+        }else if(days!==null&&days<=Number(t.wake||7)){
+          t.bucket='scheduled';
+          changes.push(`${t.name} moved to Scheduled`);
+        }
+      }else if(t.bucket==='scheduled'&&target){
+        if(days!==null&&days<=0){
+          t.bucket='do';
+          changes.push(`${t.name} moved to Do Now`);
+        }
+      }
+    });
+
+    if(changes.length){
+      saveTasks();
+      automationNotice.classList.remove('hidden');
+      automationNotice.innerHTML='<strong>Automatic update:</strong> '+changes.map(esc).join(' · ');
+    }else{
+      automationNotice.classList.add('hidden');
+      automationNotice.textContent='';
+    }
+  }
+
+  function overdue(t){
+    const n=daysFromToday(t.due);
+    return t.status!=='Done'&&n!==null&&n<0;
+  }
+
+  function dueToday(t){
+    return t.status!=='Done'&&daysFromToday(t.due)===0;
+  }
+
+  function followToday(t){
+    return t.status!=='Done'&&daysFromToday(t.follow)===0;
+  }
+
+  function inWeek(t){
+    return t.status!=='Done'&&
+      [daysFromToday(t.due),daysFromToday(t.follow)]
+      .filter(v=>v!==null)
+      .some(v=>v>=0&&v<=7);
+  }
+
+  function followSoon(t){
+    const n=daysFromToday(t.follow);
+    return t.status!=='Done'&&n!==null&&n>=0&&n<=7;
+  }
+
+  function activeTasks(){
+    return tasks.filter(t=>t.status!=='Done');
+  }
+
+  function visibleTasks(){
+    const active=activeTasks();
+
+    if(currentView==='bucket') return active.filter(t=>t.bucket===selectedBucket);
+    if(currentView==='today') return active.filter(t=>t.bucket==='do'||dueToday(t)||followToday(t));
+    if(currentView==='week') return active.filter(inWeek);
+    if(currentView==='followups') return active.filter(t=>t.bucket==='delegated'||followSoon(t));
+    return active;
+  }
+
+  function updateCounts(){
+    order.forEach(name=>{
+      const bucketTasks=tasks.filter(t=>t.status!=='Done'&&t.bucket===name);
+      const count=bucketTasks.length;
+
+      const countEl=document.getElementById('count-'+name);
+      const previewEl=document.getElementById('preview-'+name);
+      const moreEl=document.getElementById('more-'+name);
+
+      if(countEl){
+        countEl.textContent=count+' '+(count===1?'task':'tasks');
+      }
+
+      if(previewEl){
+        previewEl.textContent=count ? '• '+bucketTasks[0].name : 'No tasks';
+        previewEl.title=count ? bucketTasks[0].name : '';
+      }
+
+      if(moreEl){
+        moreEl.textContent=count>1 ? '+'+(count-1)+' more' : '';
+      }
+    });
+  }
+
+  function setActiveControls(){
+    document.querySelectorAll('.bucket-button').forEach(btn=>{
+      btn.classList.toggle('active',
+        currentView==='bucket'&&btn.dataset.bucket===selectedBucket
+      );
+    });
+
+    document.querySelectorAll('.utility-tabs button').forEach(btn=>{
+      btn.classList.toggle('active',btn.dataset.view===currentView);
+    });
+  }
+
+  function taskCard(t){
+    const details=[];
+
+    if(t.project) details.push(t.project);
+    if(t.owner) details.push(t.owner);
+    if(t.due) details.push((overdue(t)?'Overdue ':'Due ')+formatDate(t.due));
+    if(t.follow) details.push('Follow '+formatDate(t.follow));
+
+    const index=order.indexOf(t.bucket);
+    const prev=index>0?order[index-1]:null;
+    const next=index<order.length-1?order[index+1]:null;
+
+    return `
+      <article class="task">
+        <div class="task-name">${esc(t.name)}</div>
+        ${t.needsDate?'<span class="badge">Needs review date</span>':''}
+        ${details.length?`<div class="meta">${details.map(esc).join(' · ')}</div>`:''}
+        ${t.notes?`<div class="meta">${esc(t.notes)}</div>`:''}
+        <div class="actions">
+          <button type="button" data-edit="${t.id}">Edit</button>
+          ${prev?`<button type="button" data-move="${t.id}" data-to="${prev}">← ${labels[prev]}</button>`:''}
+          ${next?`<button type="button" data-move="${t.id}" data-to="${next}">${labels[next]} →</button>`:''}
+          <button type="button" data-done="${t.id}">Done</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderTaskList(){
+    const visible=visibleTasks();
+
+    const title=
+      currentView==='bucket'?labels[selectedBucket]:
+      currentView==='today'?'Today':
+      currentView==='week'?'This Week':
+      currentView==='followups'?'Follow-ups':
+      'All Active Tasks';
+
+    taskListTitle.innerHTML=esc(title)+' <span class="small">('+visible.length+')</span>';
+    taskItems.innerHTML=visible.length
+      ? visible.map(taskCard).join('')
+      : '<div class="empty">No tasks here.</div>';
+
+    taskItems.querySelectorAll('[data-edit]').forEach(btn=>{
+      btn.addEventListener('click',()=>editTask(Number(btn.dataset.edit)));
+    });
+    taskItems.querySelectorAll('[data-move]').forEach(btn=>{
+      btn.addEventListener('click',()=>moveTask(Number(btn.dataset.move),btn.dataset.to));
+    });
+    taskItems.querySelectorAll('[data-done]').forEach(btn=>{
+      btn.addEventListener('click',()=>completeTask(Number(btn.dataset.done)));
+    });
+  }
+
+  function renderReminders(){
+    const alerts=[];
+
+    tasks.forEach(t=>{
+      if(t.status==='Done') return;
+
+      const due=daysFromToday(t.due);
+      const follow=daysFromToday(t.follow);
+
+      if(t.needsDate) alerts.push('Needs date: '+t.name);
+      if(due!==null&&due<0) alerts.push('Overdue: '+t.name);
+      else if(due===0) alerts.push('Due today: '+t.name);
+      else if(due===1) alerts.push('Due tomorrow: '+t.name);
+
+      if(follow===0) alerts.push('Follow up today: '+t.name);
+      else if(follow===1) alerts.push('Follow up tomorrow: '+t.name);
+    });
+
+    const el=document.getElementById('reminders');
+    el.innerHTML=alerts.length
+      ? alerts.slice(0,12).map(a=>'<div class="archive-item">'+esc(a)+'</div>').join('')
+      : '<div class="empty">No reminders due right now.</div>';
+  }
+
+  function renderArchive(){
+    const completed=tasks
+      .filter(t=>t.status==='Done')
+      .sort((a,b)=>(b.completedAt||'').localeCompare(a.completedAt||''));
+
+    const el=document.getElementById('archive');
+    el.innerHTML=completed.length
+      ? completed.map(t=>`
+          <div class="archive-item">
+            <strong>${esc(t.name)}</strong>
+            ${t.completedAt?`<div class="small">Completed ${esc(new Date(t.completedAt).toLocaleDateString())}</div>`:''}
+          </div>
+        `).join('')
+      : '<div class="empty">Nothing completed yet.</div>';
+  }
+
+  function render(){
+    applyAutomaticRules();
+    updateCounts();
+    setActiveControls();
+    renderTaskList();
+    renderReminders();
+    renderArchive();
+  }
+
+  function clearForm(){
+    taskForm.reset();
+    taskId.value='';
+    bucket.value='do';
+    status.value='Open';
+    wakeDays.value='7';
+    formMsg.textContent='';
+  }
+
+  function editTask(id){
+    const t=tasks.find(x=>x.id===id);
+    if(!t) return;
+
+    taskId.value=t.id;
+    taskName.value=t.name;
+    bucket.value=t.bucket;
+    status.value=t.status;
+    project.value=t.project||'';
+    owner.value=t.owner||'';
+    dueDate.value=t.due||'';
+    followDate.value=t.follow||'';
+    wakeDays.value=String(t.wake||7);
+    notes.value=t.notes||'';
+    taskName.focus();
+  }
+
+  function moveTask(id,to){
+    const t=tasks.find(x=>x.id===id);
+    if(!t) return;
+    t.bucket=to;
+    saveTasks();
+    render();
+  }
+
+  function completeTask(id){
+    const t=tasks.find(x=>x.id===id);
+    if(!t) return;
+    t.status='Done';
+    t.completedAt=new Date().toISOString();
+    saveTasks();
+    render();
+  }
+
+  taskForm.addEventListener('submit',event=>{
+    event.preventDefault();
+
+    const name=taskName.value.trim();
+    if(!name){
+      formMsg.textContent='Please enter a task name.';
+      return;
+    }
+
+    const id=Number(taskId.value);
+    const item={
+      id:id||Date.now(),
+      name,
+      bucket:bucket.value,
+      status:status.value,
+      project:project.value.trim(),
+      owner:owner.value.trim(),
+      due:dueDate.value,
+      follow:followDate.value,
+      wake:Number(wakeDays.value)||7,
+      notes:notes.value.trim(),
+      completedAt:id?(tasks.find(t=>t.id===id)?.completedAt||''):''
+    };
+
+    const index=tasks.findIndex(t=>t.id===id);
+    if(index>=0) tasks[index]={...tasks[index],...item};
+    else tasks.unshift(item);
+
+    saveTasks();
+    selectedBucket=item.bucket;
+    currentView='bucket';
+    clearForm();
+    render();
+    formMsg.textContent='Task saved.';
+  });
+
+  document.getElementById('clearForm').addEventListener('click',clearForm);
+
+  document.getElementById('quickAdd').addEventListener('click',()=>{
+    clearForm();
+    taskName.focus();
+  });
+
+  document.querySelectorAll('.bucket-button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      selectedBucket=btn.dataset.bucket;
+      currentView='bucket';
+      render();
+    });
+  });
+
+  document.querySelectorAll('.utility-tabs button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      currentView=btn.dataset.view;
+      render();
+    });
+  });
+
+  const voiceButton=document.getElementById('voiceAdd');
+  const voiceStatus=document.getElementById('voiceStatus');
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+  if(SpeechRecognition){
+    const recognition=new SpeechRecognition();
+    recognition.lang='en-CA';
+    recognition.interimResults=true;
+    recognition.continuous=false;
+    let finalText='';
+
+    voiceButton.addEventListener('click',()=>{
+      clearForm();
+      finalText='';
+      voiceStatus.style.display='block';
+      voiceStatus.textContent='Listening… speak your task.';
+      voiceButton.disabled=true;
+      try{recognition.start()}catch(e){voiceButton.disabled=false}
+    });
+
+    recognition.addEventListener('result',event=>{
+      let interim='';
+      for(let i=event.resultIndex;i<event.results.length;i++){
+        const piece=event.results[i][0].transcript;
+        if(event.results[i].isFinal) finalText=(finalText+' '+piece).trim();
+        else interim+=piece;
+      }
+      taskName.value=(finalText+' '+interim).trim();
+      voiceStatus.textContent='Listening… '+taskName.value;
+    });
+
+    recognition.addEventListener('end',()=>{
+      voiceButton.disabled=false;
+      voiceStatus.style.display='block';
+      voiceStatus.textContent=taskName.value.trim()
+        ? 'Voice captured. Review it and save the task.'
+        : 'No speech captured. You can also use the microphone on the iPhone keyboard.';
+    });
+
+    recognition.addEventListener('error',()=>{
+      voiceButton.disabled=false;
+      voiceStatus.style.display='block';
+      voiceStatus.textContent='Direct voice input was not available here. Use the microphone on the iPhone keyboard.';
+    });
+  }else{
+    voiceButton.addEventListener('click',()=>{
+      clearForm();
+      taskName.focus();
+      voiceStatus.style.display='block';
+      voiceStatus.textContent='Use the microphone on the iPhone keyboard to dictate into the Task field.';
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
