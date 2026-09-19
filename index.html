@@ -207,7 +207,7 @@ textarea{min-height:90px;resize:vertical}
 <header>
   <div>
     <h1>Four Bucket Planner</h1>
-    <p>Do Now · Delegated · Scheduled · Later <span class="status-pill">Daily Planner</span></p>
+    <p>Do Now · Delegated · Scheduled · Later <span class="status-pill">Daily Planner · v3</span></p>
   </div>
   <div class="top-actions">
     <button class="secondary" id="voiceAdd" type="button">🎤 Voice Add</button>
@@ -309,14 +309,15 @@ textarea{min-height:90px;resize:vertical}
       </div>
     </div>
 
-    <label for="wakeDays">Wake-up lead time</label>
+    <label for="wakeDays">Wake-up alert</label>
     <select id="wakeDays">
-      <option value="1">1 day before</option>
-      <option value="3">3 days before</option>
-      <option value="7" selected>1 week before</option>
-      <option value="14">2 weeks before</option>
-      <option value="30">30 days before</option>
+      <option value="30m">30 minutes before</option>
+      <option value="1h">1 hour before</option>
+      <option value="1d">1 day before</option>
+      <option value="2d">2 days before</option>
+      <option value="7d" selected>1 week before</option>
     </select>
+    <div class="small" style="margin-top:6px">30-minute and 1-hour alerts will become active when timed phone notifications are added.</div>
 
     <label for="notes">Notes</label>
     <textarea id="notes" placeholder="Optional details"></textarea>
@@ -379,17 +380,32 @@ textarea{min-height:90px;resize:vertical}
   const taskListTitle=document.getElementById('taskListTitle');
   const taskItems=document.getElementById('taskItems');
 
+  function normalizeWakeValue(value){
+    const v=String(value??'');
+    if(v==='1') return '1d';
+    if(v==='2') return '2d';
+    if(v==='7') return '7d';
+    if(v==='3') return '2d';
+    if(v==='14' || v==='30') return '7d';
+    if(['30m','1h','1d','2d','7d'].includes(v)) return v;
+    return '7d';
+  }
+
+  function normalizeTasks(items){
+    return Array.isArray(items) ? items.map(t=>({...t,wake:normalizeWakeValue(t.wake)})) : [];
+  }
+
   function loadTasks(){
     try{
       const direct=localStorage.getItem(STORAGE_KEY);
-      if(direct) return JSON.parse(direct);
+      if(direct) return normalizeTasks(JSON.parse(direct));
 
       for(const key of LEGACY_KEYS){
         const legacy=localStorage.getItem(key);
         if(legacy){
           const parsed=JSON.parse(legacy);
           localStorage.setItem(STORAGE_KEY,JSON.stringify(parsed));
-          return parsed;
+          return normalizeTasks(parsed);
         }
       }
     }catch(e){}
@@ -436,6 +452,15 @@ textarea{min-height:90px;resize:vertical}
     return t.due||t.follow||'';
   }
 
+  function wakeDaysForAutoMove(value){
+    const v=String(value||'7d');
+    if(v==='1d') return 1;
+    if(v==='2d') return 2;
+    if(v==='7d') return 7;
+    // 30m and 1h are reminder-only until timed notifications are added.
+    return 0;
+  }
+
   function applyAutomaticRules(){
     const changes=[];
 
@@ -450,7 +475,7 @@ textarea{min-height:90px;resize:vertical}
         if(days!==null&&days<=0){
           t.bucket='do';
           changes.push(`${t.name} moved to Do Now`);
-        }else if(days!==null&&days<=Number(t.wake||7)){
+        }else if(days!==null&&days<=wakeDaysForAutoMove(t.wake)){
           t.bucket='scheduled';
           changes.push(`${t.name} moved to Scheduled`);
         }
@@ -657,7 +682,7 @@ textarea{min-height:90px;resize:vertical}
     taskId.value='';
     bucket.value='do';
     status.value='Open';
-    wakeDays.value='7';
+    wakeDays.value='7d';
     formMsg.textContent='';
   }
 
@@ -673,7 +698,7 @@ textarea{min-height:90px;resize:vertical}
     owner.value=t.owner||'';
     dueDate.value=t.due||'';
     followDate.value=t.follow||'';
-    wakeDays.value=String(t.wake||7);
+    wakeDays.value=String(t.wake||'7d');
     notes.value=t.notes||'';
     taskName.focus();
   }
@@ -714,7 +739,7 @@ textarea{min-height:90px;resize:vertical}
       owner:owner.value.trim(),
       due:dueDate.value,
       follow:followDate.value,
-      wake:Number(wakeDays.value)||7,
+      wake:wakeDays.value||'7d',
       notes:notes.value.trim(),
       completedAt:id?(tasks.find(t=>t.id===id)?.completedAt||''):''
     };
