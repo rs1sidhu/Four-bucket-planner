@@ -175,14 +175,6 @@ textarea{min-height:90px;resize:vertical}
   padding:9px 0;
   font-size:14px;
 }
-#voiceStatus{
-  display:none;
-  margin:8px 0 14px;
-  padding:0 4px;
-  color:var(--muted);
-  font-size:13px;
-  line-height:1.35;
-}
 .status-pill{
   display:inline-block;
   border-radius:999px;
@@ -207,21 +199,20 @@ textarea{min-height:90px;resize:vertical}
 <header>
   <div>
     <h1>Four Bucket Planner</h1>
-    <p>Do Now · Delegated · Scheduled · Later <span class="status-pill">Daily Planner · v3</span></p>
+    <p>Today · Delegated · Scheduled · Future <span class="status-pill">Daily Planner · v4</span></p>
   </div>
   <div class="top-actions">
-    <button class="secondary" id="voiceAdd" type="button">🎤 Voice Add</button>
+    <button class="secondary" id="enableBadge" type="button">Enable Badge</button>
     <button class="primary" id="quickAdd" type="button">+ Quick Add</button>
   </div>
 </header>
 
-<div id="voiceStatus" aria-live="polite"></div>
 
 <!-- STATIC BUCKETS: these remain visible even if scripts are limited -->
 <section class="bucket-grid" aria-label="Task buckets">
   <button class="bucket-button active" type="button" data-bucket="do">
     <span class="bucket-shape">
-      <strong>Do Now</strong>
+      <strong>Today</strong>
       <span class="bucket-count" id="count-do">0 tasks</span><span class="bucket-preview" id="preview-do">No tasks</span><span class="bucket-more" id="more-do"></span>
     </span>
   </button>
@@ -242,7 +233,7 @@ textarea{min-height:90px;resize:vertical}
 
   <button class="bucket-button" type="button" data-bucket="later">
     <span class="bucket-shape">
-      <strong>Later</strong>
+      <strong>Future</strong>
       <span class="bucket-count" id="count-later">0 tasks</span><span class="bucket-preview" id="preview-later">No tasks</span><span class="bucket-more" id="more-later"></span>
     </span>
   </button>
@@ -258,13 +249,13 @@ textarea{min-height:90px;resize:vertical}
 <div id="automationNotice" class="notice hidden"></div>
 
 <section id="taskList" class="task-list">
-  <h2 id="taskListTitle">Do Now <span class="small">(0)</span></h2>
+  <h2 id="taskListTitle">Today <span class="small">(0)</span></h2>
   <div id="taskItems"><div class="empty">No tasks in this bucket.</div></div>
 </section>
 
 <section class="panel">
   <h2 style="font-size:22px">Add or edit task</h2>
-  <p style="margin-top:6px">For Later items, add a due date or review date so nothing becomes forgotten.</p>
+  <p style="margin-top:6px">For Future items, add a due date or review date so nothing becomes forgotten.</p>
 
   <form id="taskForm">
     <input type="hidden" id="taskId">
@@ -276,10 +267,10 @@ textarea{min-height:90px;resize:vertical}
       <div>
         <label for="bucket">Bucket</label>
         <select id="bucket">
-          <option value="do">Do Now</option>
+          <option value="do">Today</option>
           <option value="delegated">Delegated</option>
           <option value="scheduled">Scheduled</option>
-          <option value="later">Later</option>
+          <option value="later">Future</option>
         </select>
       </div>
       <div>
@@ -309,6 +300,22 @@ textarea{min-height:90px;resize:vertical}
       </div>
     </div>
 
+    <div class="form-row">
+      <div>
+        <label for="taskTime">Time of day</label>
+        <input id="taskTime" type="time">
+        <div class="small" style="margin-top:6px">Uses your iPhone's normal 12-hour or 24-hour time display.</div>
+      </div>
+      <div>
+        <label for="repeatRule">Repeat</label>
+        <select id="repeatRule">
+          <option value="none">No repeat</option>
+          <option value="monthly12">Monthly on this date for 12 months</option>
+        </select>
+        <div class="small" style="margin-top:6px">Repeats from the due date, or the follow-up date if no due date is set.</div>
+      </div>
+    </div>
+
     <label for="wakeDays">Wake-up alert</label>
     <select id="wakeDays">
       <option value="30m">30 minutes before</option>
@@ -317,7 +324,7 @@ textarea{min-height:90px;resize:vertical}
       <option value="2d">2 days before</option>
       <option value="7d" selected>1 week before</option>
     </select>
-    <div class="small" style="margin-top:6px">30-minute and 1-hour alerts will become active when timed phone notifications are added.</div>
+    <div class="small" style="margin-top:6px">30-minute and 1-hour wake-ups use the time above. Without a time, the task wakes up on its date.</div>
 
     <label for="notes">Notes</label>
     <textarea id="notes" placeholder="Optional details"></textarea>
@@ -333,7 +340,7 @@ textarea{min-height:90px;resize:vertical}
 <div class="footer-grid">
   <section class="panel">
     <h2 style="font-size:18px">Reminder Preview</h2>
-    <p class="small" style="margin-top:4px">These appear when you open the planner. Real phone push alerts can be added later.</p>
+    <p class="small" style="margin-top:4px">These appear when you open the planner. The Home Screen badge can show the number of Today tasks.</p>
     <div id="reminders" style="margin-top:8px">
       <div class="empty">No reminders due right now.</div>
     </div>
@@ -357,7 +364,7 @@ textarea{min-height:90px;resize:vertical}
     'fourBucketPlanner.v7',
     'fourBucketPlanner.v1'
   ];
-  const labels={do:'Do Now',delegated:'Delegated',scheduled:'Scheduled',later:'Later'};
+  const labels={do:'Today',delegated:'Delegated',scheduled:'Scheduled',later:'Future'};
   const order=['do','delegated','scheduled','later'];
 
   let selectedBucket='do';
@@ -373,6 +380,8 @@ textarea{min-height:90px;resize:vertical}
   const owner=document.getElementById('owner');
   const dueDate=document.getElementById('dueDate');
   const followDate=document.getElementById('followDate');
+  const taskTime=document.getElementById('taskTime');
+  const repeatRule=document.getElementById('repeatRule');
   const wakeDays=document.getElementById('wakeDays');
   const notes=document.getElementById('notes');
   const formMsg=document.getElementById('formMsg');
@@ -392,7 +401,7 @@ textarea{min-height:90px;resize:vertical}
   }
 
   function normalizeTasks(items){
-    return Array.isArray(items) ? items.map(t=>({...t,wake:normalizeWakeValue(t.wake)})) : [];
+    return Array.isArray(items) ? items.map(t=>({...t,wake:normalizeWakeValue(t.wake),time:t.time||'',repeatRule:t.repeatRule||'none'})) : [];
   }
 
   function loadTasks(){
@@ -452,6 +461,35 @@ textarea{min-height:90px;resize:vertical}
     return t.due||t.follow||'';
   }
 
+  function targetDateTime(t){
+    const date=targetDate(t);
+    if(!date) return null;
+    const [y,m,d]=date.split('-').map(Number);
+    if(!y||!m||!d) return null;
+    if(t.time){
+      const [hh,mm]=t.time.split(':').map(Number);
+      return new Date(y,m-1,d,hh||0,mm||0,0,0);
+    }
+    return new Date(y,m-1,d,0,0,0,0);
+  }
+
+  function wakeLeadMs(value){
+    const v=String(value||'7d');
+    if(v==='30m') return 30*60*1000;
+    if(v==='1h') return 60*60*1000;
+    if(v==='1d') return 24*60*60*1000;
+    if(v==='2d') return 2*24*60*60*1000;
+    if(v==='7d') return 7*24*60*60*1000;
+    return 7*24*60*60*1000;
+  }
+
+  function formatTime(value){
+    if(!value) return '';
+    const [hh,mm]=value.split(':').map(Number);
+    const d=new Date(2000,0,1,hh||0,mm||0);
+    return new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(d);
+  }
+
   function wakeDaysForAutoMove(value){
     const v=String(value||'7d');
     if(v==='1d') return 1;
@@ -469,12 +507,14 @@ textarea{min-height:90px;resize:vertical}
 
       const target=targetDate(t);
       const days=daysFromToday(target);
+      const targetDT=targetDateTime(t);
+      const now=new Date();
       t.needsDate=(t.bucket==='later'&&!target);
 
       if(t.bucket==='later'&&target){
         if(days!==null&&days<=0){
           t.bucket='do';
-          changes.push(`${t.name} moved to Do Now`);
+          changes.push(`${t.name} moved to Today`);
         }else if(days!==null&&days<=wakeDaysForAutoMove(t.wake)){
           t.bucket='scheduled';
           changes.push(`${t.name} moved to Scheduled`);
@@ -482,7 +522,7 @@ textarea{min-height:90px;resize:vertical}
       }else if(t.bucket==='scheduled'&&target){
         if(days!==null&&days<=0){
           t.bucket='do';
-          changes.push(`${t.name} moved to Do Now`);
+          changes.push(`${t.name} moved to Today`);
         }
       }
     });
@@ -579,8 +619,8 @@ textarea{min-height:90px;resize:vertical}
 
     if(t.project) details.push(t.project);
     if(t.owner) details.push(t.owner);
-    if(t.due) details.push((overdue(t)?'Overdue ':'Due ')+formatDate(t.due));
-    if(t.follow) details.push('Follow '+formatDate(t.follow));
+    if(t.due) details.push((overdue(t)?'Overdue ':'Due ')+formatDate(t.due)+(t.time?' at '+formatTime(t.time):''));
+    if(t.follow) details.push('Follow '+formatDate(t.follow)+(!t.due&&t.time?' at '+formatTime(t.time):''));
 
     const index=order.indexOf(t.bucket);
     const prev=index>0?order[index-1]:null;
@@ -590,6 +630,7 @@ textarea{min-height:90px;resize:vertical}
       <article class="task">
         <div class="task-name">${esc(t.name)}</div>
         ${t.needsDate?'<span class="badge">Needs review date</span>':''}
+        ${t.repeatRule==='monthly12'?'<span class="badge">Monthly series</span>':''}
         ${details.length?`<div class="meta">${details.map(esc).join(' · ')}</div>`:''}
         ${t.notes?`<div class="meta">${esc(t.notes)}</div>`:''}
         <div class="actions">
@@ -644,6 +685,17 @@ textarea{min-height:90px;resize:vertical}
 
       if(follow===0) alerts.push('Follow up today: '+t.name);
       else if(follow===1) alerts.push('Follow up tomorrow: '+t.name);
+
+      if(t.time&&(t.wake==='30m'||t.wake==='1h')){
+        const target=targetDateTime(t);
+        if(target){
+          const ms=target.getTime()-Date.now();
+          const lead=wakeLeadMs(t.wake);
+          if(ms>0&&ms<=lead){
+            alerts.push('Wake-up reminder: '+t.name+' at '+formatTime(t.time));
+          }
+        }
+      }
     });
 
     const el=document.getElementById('reminders');
@@ -675,6 +727,8 @@ textarea{min-height:90px;resize:vertical}
     renderTaskList();
     renderReminders();
     renderArchive();
+    updateAppBadge();
+    refreshBadgeButton();
   }
 
   function clearForm(){
@@ -682,6 +736,8 @@ textarea{min-height:90px;resize:vertical}
     taskId.value='';
     bucket.value='do';
     status.value='Open';
+    taskTime.value='';
+    repeatRule.value='none';
     wakeDays.value='7d';
     formMsg.textContent='';
   }
@@ -698,6 +754,8 @@ textarea{min-height:90px;resize:vertical}
     owner.value=t.owner||'';
     dueDate.value=t.due||'';
     followDate.value=t.follow||'';
+    taskTime.value=t.time||'';
+    repeatRule.value=t.repeatRule||'none';
     wakeDays.value=String(t.wake||'7d');
     notes.value=t.notes||'';
     taskName.focus();
@@ -720,6 +778,56 @@ textarea{min-height:90px;resize:vertical}
     render();
   }
 
+  function addMonthsKeepingDay(dateString,months){
+    const [y,m,d]=dateString.split('-').map(Number);
+    const first=new Date(Date.UTC(y,m-1+months,1));
+    const year=first.getUTCFullYear();
+    const month=first.getUTCMonth();
+    const lastDay=new Date(Date.UTC(year,month+1,0)).getUTCDate();
+    const day=Math.min(d,lastDay);
+    return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+
+  function buildMonthlySeries(base){
+    const anchor=base.due||base.follow;
+    if(base.repeatRule!=='monthly12') return [base];
+    if(!anchor) return null;
+    const group='monthly-'+Date.now();
+    const items=[];
+    for(let i=0;i<12;i++){
+      const shifted=addMonthsKeepingDay(anchor,i);
+      const item={...base,id:Date.now()+i,repeatGroup:group,repeatIndex:i+1};
+      if(base.due) item.due=addMonthsKeepingDay(base.due,i);
+      if(base.follow) item.follow=addMonthsKeepingDay(base.follow,i);
+      items.push(item);
+    }
+    return items;
+  }
+
+  async function updateAppBadge(){
+    if(!('setAppBadge' in navigator)) return;
+    const count=tasks.filter(t=>t.status!=='Done'&&t.bucket==='do').length;
+    try{
+      if(count>0) await navigator.setAppBadge(count);
+      else if('clearAppBadge' in navigator) await navigator.clearAppBadge();
+      else await navigator.setAppBadge(0);
+    }catch(e){}
+  }
+
+  function refreshBadgeButton(){
+    const btn=document.getElementById('enableBadge');
+    if(!btn) return;
+    const supported=('setAppBadge' in navigator)&&('Notification' in window);
+    if(!supported){ btn.style.display='none'; return; }
+    if(Notification.permission==='granted'){
+      btn.style.display='none';
+      updateAppBadge();
+    }else{
+      btn.style.display='inline-block';
+      btn.textContent='Enable Badge';
+    }
+  }
+
   taskForm.addEventListener('submit',event=>{
     event.preventDefault();
 
@@ -739,21 +847,33 @@ textarea{min-height:90px;resize:vertical}
       owner:owner.value.trim(),
       due:dueDate.value,
       follow:followDate.value,
+      time:taskTime.value,
+      repeatRule:repeatRule.value||'none',
       wake:wakeDays.value||'7d',
       notes:notes.value.trim(),
       completedAt:id?(tasks.find(t=>t.id===id)?.completedAt||''):''
     };
 
+    const creatingMonthly=!id&&item.repeatRule==='monthly12';
     const index=tasks.findIndex(t=>t.id===id);
-    if(index>=0) tasks[index]={...tasks[index],...item};
-    else tasks.unshift(item);
+    if(index>=0){
+      tasks[index]={...tasks[index],...item,repeatRule:'none'};
+    }else{
+      const series=buildMonthlySeries(item);
+      if(series===null){
+        formMsg.textContent='Choose a due date or follow-up date before using monthly repeat.';
+        return;
+      }
+      if(series.length>1) tasks.unshift(...series);
+      else tasks.unshift(item);
+    }
 
     saveTasks();
     selectedBucket=item.bucket;
     currentView='bucket';
     clearForm();
     render();
-    formMsg.textContent='Task saved.';
+    formMsg.textContent=creatingMonthly?'12 monthly reminders created.':'Task saved.';
   });
 
   document.getElementById('clearForm').addEventListener('click',clearForm);
@@ -761,6 +881,20 @@ textarea{min-height:90px;resize:vertical}
   document.getElementById('quickAdd').addEventListener('click',()=>{
     clearForm();
     taskName.focus();
+  });
+
+  document.getElementById('enableBadge').addEventListener('click',async()=>{
+    if(!('Notification' in window)||!('setAppBadge' in navigator)) return;
+    try{
+      const permission=await Notification.requestPermission();
+      if(permission==='granted'){
+        await updateAppBadge();
+        refreshBadgeButton();
+      }else{
+        const btn=document.getElementById('enableBadge');
+        btn.textContent='Badge Not Enabled';
+      }
+    }catch(e){}
   });
 
   document.querySelectorAll('.bucket-button').forEach(btn=>{
@@ -778,69 +912,6 @@ textarea{min-height:90px;resize:vertical}
     });
   });
 
-  const voiceButton=document.getElementById('voiceAdd');
-  const voiceStatus=document.getElementById('voiceStatus');
-  let voiceStatusTimer=null;
-  function showVoiceStatus(message, autoHide=false){
-    if(voiceStatusTimer) clearTimeout(voiceStatusTimer);
-    voiceStatus.textContent=message;
-    voiceStatus.style.display='block';
-    if(autoHide){
-      voiceStatusTimer=setTimeout(()=>{
-        voiceStatus.style.display='none';
-        voiceStatus.textContent='';
-      },4000);
-    }
-  }
-  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-
-  if(SpeechRecognition){
-    const recognition=new SpeechRecognition();
-    recognition.lang='en-CA';
-    recognition.interimResults=true;
-    recognition.continuous=false;
-    let finalText='';
-
-    voiceButton.addEventListener('click',()=>{
-      clearForm();
-      finalText='';
-      showVoiceStatus('Listening… speak your task.');
-      voiceButton.disabled=true;
-      try{recognition.start()}catch(e){voiceButton.disabled=false}
-    });
-
-    recognition.addEventListener('result',event=>{
-      let interim='';
-      for(let i=event.resultIndex;i<event.results.length;i++){
-        const piece=event.results[i][0].transcript;
-        if(event.results[i].isFinal) finalText=(finalText+' '+piece).trim();
-        else interim+=piece;
-      }
-      taskName.value=(finalText+' '+interim).trim();
-      showVoiceStatus('Listening… '+taskName.value);
-    });
-
-    recognition.addEventListener('end',()=>{
-      voiceButton.disabled=false;
-      showVoiceStatus(
-        taskName.value.trim()
-          ? 'Voice captured. Review it and save the task.'
-          : 'No speech captured. You can also use the iPhone keyboard microphone.',
-        true
-      );
-    });
-
-    recognition.addEventListener('error',()=>{
-      voiceButton.disabled=false;
-      showVoiceStatus('Direct voice input was not available here. Use the microphone on the iPhone keyboard.', true);
-    });
-  }else{
-    voiceButton.addEventListener('click',()=>{
-      clearForm();
-      taskName.focus();
-      showVoiceStatus('Use the microphone on the iPhone keyboard to dictate into the Task field.', true);
-    });
-  }
 
   render();
 })();
